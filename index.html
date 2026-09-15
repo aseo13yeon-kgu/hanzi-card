@@ -17,6 +17,13 @@
     --pinyin: #6E6E68;
     --accent: #9A9A93;
     --accent-soft: #F5F5F3;
+    --warn: #B76B5A;
+    --warn-line: #E3C3BA;
+    --warn-soft: #FBF1EE;
+    --good: #5F8F6F;
+    --good-line: #C1D8C8;
+    --good-soft: #EFF6F1;
+    --star: #B8933A;
   }
 
   * { box-sizing: border-box; }
@@ -44,7 +51,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
   }
 
   .heading {
@@ -65,6 +72,60 @@
     color: var(--ink-soft);
   }
 
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .toolbar select {
+    flex: 1;
+    min-width: 0;
+    font-family: "Noto Sans KR", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: 10px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+
+  .toolbar select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .progress-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .progress-text {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--ink);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
   .counter {
     font-size: 13px;
     color: var(--ink-soft);
@@ -72,10 +133,41 @@
   }
 
   .card-wrap {
+    position: relative;
     width: 100%;
     aspect-ratio: 4 / 5;
     max-height: 400px;
     perspective: 1400px;
+  }
+
+  .fav-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--ink-soft);
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .fav-btn.active {
+    color: var(--star);
+    border-color: var(--star);
+  }
+
+  .fav-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .card {
@@ -144,7 +236,27 @@
     text-align: center;
   }
 
-  .controls {
+  .empty-state {
+    width: 100%;
+    padding: 48px 16px;
+    border-radius: 24px;
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .empty-state .msg {
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  .rate-row,
+  .controls,
+  .actions-row {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -194,21 +306,62 @@
     border-color: #444442;
   }
 
-  .btn-shuffle {
-    width: 100%;
+  .btn-dontknow {
+    flex: 1;
+    color: var(--warn);
+    border-color: var(--warn-line);
+  }
+
+  .btn-dontknow:hover {
+    background: var(--warn-soft);
+  }
+
+  .btn-know {
+    flex: 1;
+    color: var(--good);
+    border-color: var(--good-line);
+  }
+
+  .btn-know:hover {
+    background: var(--good-soft);
+  }
+
+  .actions-row button {
+    flex: 1;
     background: transparent;
     color: var(--ink-soft);
     border: 1px solid var(--line);
     font-size: 13px;
   }
 
-  .btn-shuffle:hover {
+  .actions-row button:hover {
     background: var(--accent-soft);
     color: var(--ink);
   }
 
+  .empty-state button {
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+
+  .empty-state button:hover {
+    background: var(--accent-soft);
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .card { transition: none; }
+  }
+
+  @media (max-width: 360px) {
+    .toolbar select { font-size: 12px; padding: 9px 6px; }
+    .rate-row button, .actions-row button { font-size: 13px; }
   }
 </style>
 </head>
@@ -217,12 +370,30 @@
 <div class="stage">
   <div class="heading">
     <div class="zh">汉字卡片</div>
-    <div class="ko">HSK 1급 한자 플래시카드</div>
+    <div class="ko">한자 플래시카드</div>
+  </div>
+
+  <div class="toolbar">
+    <select id="levelSelect" aria-label="급수 선택">
+      <option value="hsk1">HSK 1급</option>
+      <option value="hsk2">HSK 2급</option>
+    </select>
+    <select id="filterSelect" aria-label="보기 모드 선택">
+      <option value="all">전체 보기</option>
+      <option value="unknown">모르는 단어만</option>
+      <option value="favorite">즐겨찾기만</option>
+    </select>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-text" id="progressText">아는 단어 0 / 0 (0%)</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
 
   <div class="counter" id="counter">1 / 20</div>
 
-  <div class="card-wrap">
+  <div class="card-wrap" id="cardWrap">
+    <button class="fav-btn" id="favBtn" type="button" title="즐겨찾기" aria-label="즐겨찾기 토글">☆</button>
     <div class="card" id="card">
       <div class="face front">
         <div class="hanzi" id="hanzi">爱</div>
@@ -236,86 +407,319 @@
     </div>
   </div>
 
-  <div class="controls">
-    <button class="btn-nav" id="prevBtn">← 이전</button>
-    <button class="btn-flip" id="flipBtn">뒤집기</button>
-    <button class="btn-nav" id="nextBtn">다음 →</button>
+  <div class="empty-state" id="emptyState" hidden>
+    <div class="msg" id="emptyMessage">🎉 이 조건에 맞는 카드가 없어요!</div>
+    <button id="emptyResetBtn" type="button">전체 보기로 돌아가기</button>
   </div>
 
-  <button class="btn-shuffle" id="shuffleBtn">🔀 순서 섞기</button>
+  <div class="rate-row" id="rateRow">
+    <button class="btn-dontknow" id="dontKnowBtn" type="button">🤔 몰라요</button>
+    <button class="btn-know" id="knowBtn" type="button">✅ 알아요</button>
+  </div>
+
+  <div class="controls" id="navControls">
+    <button class="btn-nav" id="prevBtn" type="button">← 이전</button>
+    <button class="btn-flip" id="flipBtn" type="button">뒤집기</button>
+    <button class="btn-nav" id="nextBtn" type="button">다음 →</button>
+  </div>
+
+  <div class="actions-row">
+    <button id="shuffleBtn" type="button">🔀 순서 섞기</button>
+    <button id="resetOrderBtn" type="button">↺ 순서 초기화</button>
+  </div>
 </div>
 
 <script>
-  const words = [
-    { hanzi: "爱",     pinyin: "ài",         meaning: "사랑하다, 좋아하다" },
-    { hanzi: "八",     pinyin: "bā",         meaning: "여덟, 8" },
-    { hanzi: "爸爸",   pinyin: "bàba",       meaning: "아빠, 아버지" },
-    { hanzi: "杯子",   pinyin: "bēizi",      meaning: "컵, 잔" },
-    { hanzi: "北京",   pinyin: "Běijīng",    meaning: "베이징(지명)" },
-    { hanzi: "本",     pinyin: "běn",        meaning: "권 (책을 세는 양사)" },
-    { hanzi: "不客气", pinyin: "bú kèqi",    meaning: "천만에요, 별말씀을요" },
-    { hanzi: "不",     pinyin: "bù",         meaning: "아니다, ~하지 않다" },
-    { hanzi: "菜",     pinyin: "cài",        meaning: "요리, 채소" },
-    { hanzi: "茶",     pinyin: "chá",        meaning: "차(마시는 차)" },
-    { hanzi: "吃",     pinyin: "chī",        meaning: "먹다" },
-    { hanzi: "出租车", pinyin: "chūzūchē",   meaning: "택시" },
-    { hanzi: "打电话", pinyin: "dǎ diànhuà", meaning: "전화를 걸다" },
-    { hanzi: "大",     pinyin: "dà",         meaning: "크다" },
-    { hanzi: "的",     pinyin: "de",         meaning: "~의 (소유·수식 조사)" },
-    { hanzi: "点",     pinyin: "diǎn",       meaning: "시(시간 단위), 조금" },
-    { hanzi: "电脑",   pinyin: "diànnǎo",    meaning: "컴퓨터" },
-    { hanzi: "电视",   pinyin: "diànshì",    meaning: "텔레비전" },
-    { hanzi: "电影",   pinyin: "diànyǐng",   meaning: "영화" },
-    { hanzi: "东西",   pinyin: "dōngxi",     meaning: "물건, 것" }
-  ];
+  const LEVELS = {
+    hsk1: {
+      label: "HSK 1급",
+      words: [
+        { hanzi: "爱",     pinyin: "ài",         meaning: "사랑하다, 좋아하다" },
+        { hanzi: "八",     pinyin: "bā",         meaning: "여덟, 8" },
+        { hanzi: "爸爸",   pinyin: "bàba",       meaning: "아빠, 아버지" },
+        { hanzi: "杯子",   pinyin: "bēizi",      meaning: "컵, 잔" },
+        { hanzi: "北京",   pinyin: "Běijīng",    meaning: "베이징(지명)" },
+        { hanzi: "本",     pinyin: "běn",        meaning: "권 (책을 세는 양사)" },
+        { hanzi: "不客气", pinyin: "bú kèqi",    meaning: "천만에요, 별말씀을요" },
+        { hanzi: "不",     pinyin: "bù",         meaning: "아니다, ~하지 않다" },
+        { hanzi: "菜",     pinyin: "cài",        meaning: "요리, 채소" },
+        { hanzi: "茶",     pinyin: "chá",        meaning: "차(마시는 차)" },
+        { hanzi: "吃",     pinyin: "chī",        meaning: "먹다" },
+        { hanzi: "出租车", pinyin: "chūzūchē",   meaning: "택시" },
+        { hanzi: "打电话", pinyin: "dǎ diànhuà", meaning: "전화를 걸다" },
+        { hanzi: "大",     pinyin: "dà",         meaning: "크다" },
+        { hanzi: "的",     pinyin: "de",         meaning: "~의 (소유·수식 조사)" },
+        { hanzi: "点",     pinyin: "diǎn",       meaning: "시(시간 단위), 조금" },
+        { hanzi: "电脑",   pinyin: "diànnǎo",    meaning: "컴퓨터" },
+        { hanzi: "电视",   pinyin: "diànshì",    meaning: "텔레비전" },
+        { hanzi: "电影",   pinyin: "diànyǐng",   meaning: "영화" },
+        { hanzi: "东西",   pinyin: "dōngxi",     meaning: "물건, 것" }
+      ]
+    },
+    hsk2: {
+      label: "HSK 2급",
+      words: [
+        { hanzi: "帮助",   pinyin: "bāngzhù",    meaning: "돕다, 도움" },
+        { hanzi: "报纸",   pinyin: "bàozhǐ",     meaning: "신문" },
+        { hanzi: "比",     pinyin: "bǐ",         meaning: "~보다 (비교를 나타냄)" },
+        { hanzi: "别",     pinyin: "bié",        meaning: "~하지 마라" },
+        { hanzi: "宾馆",   pinyin: "bīnguǎn",    meaning: "호텔" },
+        { hanzi: "唱歌",   pinyin: "chànggē",    meaning: "노래를 부르다" },
+        { hanzi: "穿",     pinyin: "chuān",      meaning: "(옷을) 입다" },
+        { hanzi: "次",     pinyin: "cì",         meaning: "번, 회(횟수)" },
+        { hanzi: "错",     pinyin: "cuò",        meaning: "틀리다, 잘못되다" },
+        { hanzi: "打篮球", pinyin: "dǎ lánqiú",  meaning: "농구를 하다" },
+        { hanzi: "大家",   pinyin: "dàjiā",      meaning: "모두, 다들" },
+        { hanzi: "到",     pinyin: "dào",        meaning: "도착하다, ~까지" },
+        { hanzi: "弟弟",   pinyin: "dìdi",       meaning: "남동생" },
+        { hanzi: "读",     pinyin: "dú",         meaning: "읽다" },
+        { hanzi: "对",     pinyin: "duì",        meaning: "맞다, 옳다" },
+        { hanzi: "房间",   pinyin: "fángjiān",   meaning: "방" },
+        { hanzi: "非常",   pinyin: "fēicháng",   meaning: "매우, 대단히" },
+        { hanzi: "服务员", pinyin: "fúwùyuán",   meaning: "종업원" },
+        { hanzi: "高兴",   pinyin: "gāoxìng",    meaning: "기쁘다, 즐겁다" },
+        { hanzi: "告诉",   pinyin: "gàosu",      meaning: "말하다, 알려주다" }
+      ]
+    }
+  };
 
+  const STORAGE_KEY = "hanziCardState.v1";
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function getLevelState(key) {
+    if (!state.levels[key]) {
+      state.levels[key] = { known: [], favorites: [], lastHanzi: null };
+    }
+    return state.levels[key];
+  }
+
+  const state = loadState();
+  if (!state.levels) state.levels = {};
+
+  let currentLevelKey = LEVELS[state.lastLevel] ? state.lastLevel : "hsk1";
+  let filterMode = "all";
+  let order = LEVELS[currentLevelKey].words.slice();
+  let workingWords = [];
   let index = 0;
   let flipped = false;
 
+  const levelSelect = document.getElementById("levelSelect");
+  const filterSelect = document.getElementById("filterSelect");
+  const progressText = document.getElementById("progressText");
+  const progressFill = document.getElementById("progressFill");
+  const counterEl = document.getElementById("counter");
+  const cardWrap = document.getElementById("cardWrap");
   const card = document.getElementById("card");
+  const favBtn = document.getElementById("favBtn");
   const hanziEl = document.getElementById("hanzi");
   const pinyinEl = document.getElementById("pinyin");
   const meaningEl = document.getElementById("meaning");
-  const counterEl = document.getElementById("counter");
+  const emptyState = document.getElementById("emptyState");
+  const emptyMessage = document.getElementById("emptyMessage");
+  const emptyResetBtn = document.getElementById("emptyResetBtn");
+  const rateRow = document.getElementById("rateRow");
+  const dontKnowBtn = document.getElementById("dontKnowBtn");
+  const knowBtn = document.getElementById("knowBtn");
+  const navControls = document.getElementById("navControls");
   const flipBtn = document.getElementById("flipBtn");
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
   const shuffleBtn = document.getElementById("shuffleBtn");
+  const resetOrderBtn = document.getElementById("resetOrderBtn");
 
-  function shuffle(array) {
+  levelSelect.value = currentLevelKey;
+
+  function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
   }
 
+  function matchesFilter(word, knownSet, favSet) {
+    if (filterMode === "unknown") return !knownSet.has(word.hanzi);
+    if (filterMode === "favorite") return favSet.has(word.hanzi);
+    return true;
+  }
+
+  function rebuildWorking(preserveHanzi) {
+    const lvl = getLevelState(currentLevelKey);
+    const knownSet = new Set(lvl.known);
+    const favSet = new Set(lvl.favorites);
+    workingWords = order.filter((w) => matchesFilter(w, knownSet, favSet));
+
+    if (preserveHanzi) {
+      const found = workingWords.findIndex((w) => w.hanzi === preserveHanzi);
+      index = found >= 0 ? found : 0;
+    } else if (workingWords.length) {
+      index = ((index % workingWords.length) + workingWords.length) % workingWords.length;
+    } else {
+      index = 0;
+    }
+  }
+
+  function persistPosition() {
+    const lvl = getLevelState(currentLevelKey);
+    lvl.lastHanzi = workingWords.length ? workingWords[index].hanzi : null;
+    saveState();
+  }
+
+  function updateProgress() {
+    const lvl = getLevelState(currentLevelKey);
+    const knownSet = new Set(lvl.known);
+    const total = LEVELS[currentLevelKey].words.length;
+    const knownCount = LEVELS[currentLevelKey].words.filter((w) => knownSet.has(w.hanzi)).length;
+    const percent = total ? Math.round((knownCount / total) * 100) : 0;
+    progressText.textContent = `아는 단어 ${knownCount} / ${total} (${percent}%)`;
+    progressFill.style.width = percent + "%";
+  }
+
+  function updateEmptyMessage() {
+    let msg = "🎉 이 조건에 맞는 카드가 없어요!";
+    if (filterMode === "unknown") msg = "🎉 이 급수 단어를 모두 외웠어요!";
+    if (filterMode === "favorite") msg = "⭐ 즐겨찾기한 단어가 아직 없어요.";
+    emptyMessage.textContent = msg;
+  }
+
   function render() {
-    const word = words[index];
+    updateProgress();
+
+    if (workingWords.length === 0) {
+      updateEmptyMessage();
+      emptyState.hidden = false;
+      cardWrap.hidden = true;
+      rateRow.hidden = true;
+      navControls.hidden = true;
+      counterEl.textContent = "0 / 0";
+      return;
+    }
+
+    emptyState.hidden = true;
+    cardWrap.hidden = false;
+    rateRow.hidden = false;
+    navControls.hidden = false;
+
+    const word = workingWords[index];
     hanziEl.textContent = word.hanzi;
     pinyinEl.textContent = word.pinyin;
     meaningEl.textContent = word.meaning;
-    counterEl.textContent = (index + 1) + " / " + words.length;
+    counterEl.textContent = (index + 1) + " / " + workingWords.length;
+
+    const lvl = getLevelState(currentLevelKey);
+    const isFav = new Set(lvl.favorites).has(word.hanzi);
+    favBtn.textContent = isFav ? "★" : "☆";
+    favBtn.classList.toggle("active", isFav);
   }
 
-  function setFlipped(state) {
-    flipped = state;
+  function setFlipped(newState) {
+    flipped = newState;
     card.classList.toggle("flipped", flipped);
   }
 
   function goTo(newIndex) {
-    index = (newIndex + words.length) % words.length;
+    if (workingWords.length === 0) return;
+    index = (newIndex + workingWords.length) % workingWords.length;
     setFlipped(false);
+    persistPosition();
     render();
   }
+
+  function setKnown(value) {
+    if (workingWords.length === 0) return;
+    const word = workingWords[index];
+    const lvl = getLevelState(currentLevelKey);
+    const set = new Set(lvl.known);
+    if (value) set.add(word.hanzi); else set.delete(word.hanzi);
+    lvl.known = [...set];
+    saveState();
+    rebuildWorking();
+    if (workingWords.length > 0 && workingWords[index] && workingWords[index].hanzi === word.hanzi) {
+      index = (index + 1) % workingWords.length;
+    }
+    setFlipped(false);
+    persistPosition();
+    render();
+  }
+
+  function toggleFavorite() {
+    if (workingWords.length === 0) return;
+    const word = workingWords[index];
+    const lvl = getLevelState(currentLevelKey);
+    const set = new Set(lvl.favorites);
+    if (set.has(word.hanzi)) set.delete(word.hanzi); else set.add(word.hanzi);
+    lvl.favorites = [...set];
+    saveState();
+    rebuildWorking();
+    persistPosition();
+    render();
+  }
+
+  levelSelect.addEventListener("change", () => {
+    currentLevelKey = levelSelect.value;
+    state.lastLevel = currentLevelKey;
+    order = LEVELS[currentLevelKey].words.slice();
+    filterMode = "all";
+    filterSelect.value = "all";
+    const lvl = getLevelState(currentLevelKey);
+    rebuildWorking(lvl.lastHanzi);
+    setFlipped(false);
+    saveState();
+    render();
+  });
+
+  filterSelect.addEventListener("change", () => {
+    filterMode = filterSelect.value;
+    rebuildWorking();
+    setFlipped(false);
+    persistPosition();
+    render();
+  });
+
+  emptyResetBtn.addEventListener("click", () => {
+    filterMode = "all";
+    filterSelect.value = "all";
+    rebuildWorking();
+    render();
+  });
+
+  favBtn.addEventListener("click", () => toggleFavorite());
+  dontKnowBtn.addEventListener("click", () => setKnown(false));
+  knowBtn.addEventListener("click", () => setKnown(true));
 
   flipBtn.addEventListener("click", () => setFlipped(!flipped));
   card.addEventListener("click", () => setFlipped(!flipped));
   prevBtn.addEventListener("click", () => goTo(index - 1));
   nextBtn.addEventListener("click", () => goTo(index + 1));
+
   shuffleBtn.addEventListener("click", () => {
-    shuffle(words);
+    shuffleArray(order);
+    rebuildWorking();
     index = 0;
     setFlipped(false);
+    persistPosition();
+    render();
+  });
+
+  resetOrderBtn.addEventListener("click", () => {
+    order = LEVELS[currentLevelKey].words.slice();
+    rebuildWorking();
+    index = 0;
+    setFlipped(false);
+    persistPosition();
     render();
   });
 
@@ -323,8 +727,13 @@
     if (e.key === "ArrowLeft") goTo(index - 1);
     if (e.key === "ArrowRight") goTo(index + 1);
     if (e.key === " ") { e.preventDefault(); setFlipped(!flipped); }
+    if (e.key === "k" || e.key === "K") setKnown(true);
+    if (e.key === "d" || e.key === "D") setKnown(false);
+    if (e.key === "f" || e.key === "F") toggleFavorite();
   });
 
+  const initialLvl = getLevelState(currentLevelKey);
+  rebuildWorking(initialLvl.lastHanzi);
   render();
 </script>
 
